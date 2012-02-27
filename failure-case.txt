@@ -1,0 +1,5 @@
+#lang racket
+
+(require (planet dherman/c:3:3))
+(parse-program "void foo(void *x, void *y) { int i = foo(x, y); }
+void bar(void *x, void *y) { int i = bar(x, y); }")

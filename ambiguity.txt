@@ -1,0 +1,195 @@
+AMBIGUITY:
+
+parameter-declaration
+ |
+ +-- declaration-specifiers
+ |    |
+ |    +-- type-specifier
+ |         |
+ |         +-- "int"
+ |
+ +-- declarator
+      |
+      +-- direct-declarator
+           |
+           +-- "("
+           |
+           +-- declarator
+           |    |
+           |    +-- direct-declarator
+           |         |
+           |         +-- typedef-name     <=== NON-STANDARD!
+           |              |
+           |              +-- "T"
+           |
+           +-- ")"
+
+parameter-declaration
+ |
+ +-- declaration-specifiers
+ |    |
+ |    +-- type-specifier
+ |         |
+ |         +-- "int"
+ |
+ +-- abstract-declarator
+      |
+      +-- direct-abstract-declarator
+           |
+           +-- "("
+           |
+           +-- parameter-type-list
+           |    |
+	   | 	+-- parameter-list
+	   |	     |
+	   |	     +-- parameter-declaration
+	   |	          |
+	   |		  +-- declaration-specifiers
+	   |		       |
+	   |		       +-- type-specifier
+	   |		            |
+	   |		   	    +-- typedef-name
+	   |			         |
+	   |				 +-- "T"
+	   |
+       	   +-- ")"
+
+GCC:
+
+typedef int T;
+
+void foo()
+{
+    typedef int (*T2int)(T); // (T ->* int)
+    typedef int (*fn)(int (T)); // interpreted as ((T ->* int) ->* int)
+    //                     |
+    //                     +-- so this is a parameter-type-list, not a declaration
+    T2int g;
+    fn f;
+
+    (*f)(g);
+}
+
+void bar()
+{
+    float (T); // <-- this is a valid declarator
+}
+
+
+POSSIBLE SOLUTION:
+* change the production:
+    parameter-declaration --> declaration-specifiers declarator
+  to
+    parameter-declaration --> declaration-specifiers declarator-paren-tn
+* declarator-paren-tn doesn't allow parenthesized typedef-names:
+  o declarator-paren-tn --> direct-declarator-paren-tn
+  o direct-declarator-paren-tn --> "(" declarator-tn ")"
+* XXX: can we allow direct-declarator-tn --> "(" declarator ")" ???
+       instead of direct-declarator-tn --> "(" declarator-tn ")" ???
+
+
+CONTEXT:
+ 
+ParameterDeclaration --> DeclarationSpecifiers . Declarator<AnyIdentifier>
+    Declarator<AnyIdentifier> --> . DirectDeclarator<AnyIdentifier>
+        DirectDeclarator<AnyIdentifier> --> "(" . Declarator<AnyIdentifier> ")"
+
+ParameterDeclaration --> DeclarationSpecifiers . AbstractDeclarator
+    AbstractDeclarator --> . DirectAbstractDeclarator
+        DirectAbstractDeclarator --> "(" . ParameterTypeList ")"
+
+typedef int (*fn)(int (int));
+
+
+
+
+
+
+16	!PushFormalsContext	=	()
+
+...
+
+State 324
+	!CacheDeclaratorTypedefName -> TYPEDEF_NAME . 
+
+	long					reduce	26
+	O_BRACKET					reduce	26
+	union					reduce	26
+	double					reduce	26
+	int					reduce	26
+	COMMA					reduce	26
+	_Bool					reduce	26
+	enum					reduce	26
+	unsigned					reduce	26
+	inline					reduce	26
+	short					reduce	26
+	const					reduce	26
+	typedef					reduce	26
+	register					reduce	26
+	C_PAREN					reduce	26
+	O_BRACE					reduce	26
+	float					reduce	26
+	SEMI_COLON					reduce	26
+	void					reduce	26
+	char					reduce	26
+	O_PAREN					reduce	26
+	volatile					reduce	26
+	static					reduce	26
+	auto					reduce	26
+	COLON					reduce	26
+	restrict					reduce	26
+	struct					reduce	26
+	_Complex					reduce	26
+	=					reduce	26
+	signed					reduce	26
+	extern					reduce	26
+	TYPEDEF_NAME					reduce	26
+
+...
+
+State 642
+	DirectDeclarator -> O_PAREN . Declarator C_PAREN 
+	DirectAbstractDeclarator -> O_PAREN . AbstractDeclarator C_PAREN 
+	DirectAbstractDeclarator -> O_PAREN . !PushFormalsContext !PushScope ParameterTypeList !PopScope !PopContext C_PAREN 
+	DirectAbstractDeclarator -> O_PAREN . !PushFormalsContext !PushScope !PopScope !PopContext C_PAREN 
+
+	long					reduce	16
+	AbstractDeclarator					goto	296
+	O_BRACKET					shift	212
+	union					reduce	16
+	double					reduce	16
+	int					reduce	16
+	DirectDeclarator					goto	322
+	IDENTIFIER					shift	315
+	_Bool					reduce	16
+	unsigned					reduce	16
+	inline					reduce	16
+	short					reduce	16
+	const					reduce	16
+	typedef					reduce	16
+	!CacheDeclaratorIdentifier					goto	319
+	!PushFormalsContext					goto	295
+	extern					reduce	16
+	Declarator					goto	400
+	C_PAREN					reduce	16
+	enum					reduce	16
+	*					shift	210
+	float					reduce	16
+	Pointer					goto	640
+	void					reduce	16
+	char					reduce	16
+	auto					reduce	16
+	DirectAbstractDeclarator					goto	209
+	volatile					reduce	16
+	static					reduce	16
+	restrict					reduce	16
+	struct					reduce	16
+	_Complex					reduce	16
+	register					reduce	16
+	signed					reduce	16
+	O_PAREN					shift	642
+begin conflict:
+	TYPEDEF_NAME					shift	324
+	TYPEDEF_NAME					reduce	16
+end conflict
+	!CacheDeclaratorTypedefName					goto	320
